@@ -7,6 +7,9 @@
 # Datos generados por el pipeline (pesados y reproducibles)
 data/
 
+# Configuración local del editor (VS Code)
+.vscode/
+
 # Cachés de Python y herramientas
 __pycache__/
 *.pyc
