@@ -1,0 +1,50 @@
+version: 2
+
+sources:
+  - name: core
+    description: >
+      Tablas que carga `pipeline_lab` en DuckDB (esquema `core`) a partir de los datos limpios.
+      dbt NO las crea: las lee. Granularidad de los hechos: una fila por hora (UTC) x region x tipo.
+    schema: core
+    tables:
+      - name: fct_observation
+        description: Observaciones horarias de EIA-930. Una fila por hora UTC x respondent x type.
+        data_tests:
+          - unique_combination:
+              arguments:
+                combination_columns: [period_utc, respondent, type]
+        columns:
+          - name: period_utc
+            description: Hora de la observacion, en UTC (TIMESTAMP sin zona).
+            data_tests: [not_null]
+          - name: respondent
+            description: Codigo de la region o autoridad de balance.
+            data_tests: [not_null]
+          - name: type
+            description: "Tipo de observacion: D, DF, NG o TI."
+            data_tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["D", "DF", "NG", "TI"]
+          - name: value
+            description: Valor en megavatios-hora. Un interchange (TI) negativo es valido.
+            data_tests: [not_null]
+      - name: dim_respondent
+        description: Una fila por region / autoridad de balance.
+        columns:
+          - name: respondent
+            data_tests: [unique, not_null]
+          - name: respondent_name
+            data_tests: [not_null]
+      - name: dim_observation_type
+        description: Una fila por tipo de observacion, con su categoria.
+        columns:
+          - name: type
+            data_tests: [unique, not_null]
+          - name: category
+            data_tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ["demand", "demand_forecast", "generation", "interchange"]

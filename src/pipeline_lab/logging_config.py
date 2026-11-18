@@ -3,6 +3,9 @@
 Por que un Formatter y no un Filter: el Formatter ve el texto FINAL (mensaje ya formateado
 con sus argumentos y, ademas, el traceback de las excepciones). Asi enmascaramos tambien una
 URL con `api_key=...` que aparezca dentro de un mensaje de error de una libreria.
+
+Ademas del formatter, el modulo expone `mask_secrets()` (para enmascarar texto que NO pasa por
+logging, p. ej. el mensaje de un error) y `silence_http_loggers()`.
 """
 
 from __future__ import annotations
@@ -29,6 +32,44 @@ def _variants(secret: str) -> set[str]:
     return {secret, quote(secret, safe=""), quote(secret)}
 
 
+def _sorted_variants(secrets: Iterable[str]) -> list[str]:
+    """Variantes de todos los secretos, de la mas larga a la mas corta.
+
+    Un secreto vacio haria que replace("") corrompa todo el texto, por eso se descarta.
+    Primero las variantes mas largas, por si una contiene a otra.
+    """
+    variants: set[str] = set()
+    for secret in secrets:
+        if secret:
+            variants |= _variants(secret)
+    return sorted(variants, key=len, reverse=True)
+
+
+def _apply_mask(text: str, variants: list[str]) -> str:
+    for variant in variants:
+        text = text.replace(variant, MASK)
+    return text
+
+
+def mask_secrets(text: str, secrets: Iterable[str]) -> str:
+    """Sustituye cada secreto (literal o codificado en URL) por `***` en `text`.
+
+    Solo reconoce coincidencias exactas: un secreto transformado (base64, invertido, partido
+    en trozos) no se detecta.
+    """
+    return _apply_mask(text, _sorted_variants(secrets))
+
+
+def silence_http_loggers() -> None:
+    """Sube `httpx` y `httpcore` a WARNING: a nivel INFO registran la URL completa.
+
+    Es idempotente. Defensa en profundidad: el enmascarado ya oculta la clave, pero es mejor
+    no generar ese log.
+    """
+    for name in _NOISY_LOGGERS:
+        logging.getLogger(name).setLevel(logging.WARNING)
+
+
 class MaskingFormatter(logging.Formatter):
     """Formatter que sustituye cualquier secreto conocido por `***` en el texto final."""
 
@@ -36,19 +77,10 @@ class MaskingFormatter(logging.Formatter):
         super().__init__(LOG_FORMAT)
         # Hora en UTC para que los logs sean comparables entre maquinas.
         self.converter = time.gmtime
-        # Un secreto vacio haria que replace("") corrompa todo el texto, por eso se descarta.
-        variants: set[str] = set()
-        for secret in secrets:
-            if secret:
-                variants |= _variants(secret)
-        # Primero las variantes mas largas, por si una contiene a otra.
-        self._variants = sorted(variants, key=len, reverse=True)
+        self._variants = _sorted_variants(secrets)
 
     def format(self, record: logging.LogRecord) -> str:
-        text = super().format(record)
-        for variant in self._variants:
-            text = text.replace(variant, MASK)
-        return text
+        return _apply_mask(super().format(record), self._variants)
 
 
 def configure_logging(
@@ -78,5 +110,4 @@ def configure_logging(
     root.setLevel(level.upper())
 
     # Defensa en profundidad: aunque el formatter enmascara, es mejor no generar el log.
-    for name in _NOISY_LOGGERS:
-        logging.getLogger(name).setLevel(logging.WARNING)
+    silence_http_loggers()

@@ -7,6 +7,11 @@
 # Datos generados por el pipeline (pesados y reproducibles)
 data/
 
+# Artefactos que genera dbt al ejecutarse (se recrean)
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+
 # Configuración local del editor (VS Code)
 .vscode/
 

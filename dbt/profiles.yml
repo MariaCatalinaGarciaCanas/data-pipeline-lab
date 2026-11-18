@@ -1,0 +1,9 @@
+pipeline_lab:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      # Ruta relativa a la carpeta dbt/ (donde se ejecuta dbt). Se puede cambiar con la
+      # variable de entorno DBT_DUCKDB_PATH (Docker y CI la usan).
+      path: "{{ env_var('DBT_DUCKDB_PATH', '../data/warehouse/analytics.duckdb') }}"
+      threads: 1

@@ -1,0 +1,65 @@
+version: 2
+
+models:
+  - name: stg_observations
+    description: >
+      Observaciones horarias tal como estan en el almacen, con una clave sustituta.
+      Granularidad: una fila por hora UTC x respondent x type.
+    columns:
+      - name: observation_id
+        description: Hash md5 de (period_utc, respondent, type). Identifica una observacion.
+        data_tests: [unique, not_null]
+      - name: period_utc
+        description: Hora de la observacion en UTC.
+        data_tests: [not_null]
+      - name: respondent
+        description: Codigo de la region o autoridad de balance.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_respondents')
+                field: respondent
+      - name: type
+        description: "Tipo de observacion: D (demanda), DF (pronostico), NG (generacion), TI (intercambio)."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["D", "DF", "NG", "TI"]
+          - relationships:
+              arguments:
+                to: ref('stg_observation_types')
+                field: type
+      - name: value
+        description: Valor en megavatios-hora. Para TI (intercambio) puede ser negativo.
+        data_tests: [not_null]
+      - name: value_units
+        description: Unidad del valor.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["megawatthours"]
+      - name: ingested_at
+        description: Cuando se descargo la fila (UTC).
+
+  - name: stg_respondents
+    description: Regiones / autoridades de balance. Una fila por respondent.
+    columns:
+      - name: respondent
+        data_tests: [unique, not_null]
+      - name: respondent_name
+        data_tests: [not_null]
+
+  - name: stg_observation_types
+    description: Tipos de observacion con su categoria. Una fila por type.
+    columns:
+      - name: type
+        data_tests: [unique, not_null]
+      - name: category
+        description: Agrupa tipos por significado. No se deben mezclar categorias al agregar.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["demand", "demand_forecast", "generation", "interchange"]
