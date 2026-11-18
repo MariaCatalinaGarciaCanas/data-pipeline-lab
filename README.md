@@ -212,12 +212,17 @@ La imagen corre como usuario sin privilegios, y `.dockerignore` excluye `.env` y
 
 ## Limitaciones (lo que NO está hecho o NO se ha comprobado)
 
-- **No se ha descargado ningún dato real de EIA con este pipeline.** El cliente HTTP se diseñó a
-  partir de consultas reales de metadatos y muestras (Fase 1, paso 0), pero la extracción paginada,
-  el almacenamiento, la limpieza y dbt se probaron con **datos sintéticos y respuestas simuladas**.
-  La primera ejecución real (`--live`) puede revelar diferencias que aquí no se ven.
-- **El workflow de CI no se ha ejecutado en GitHub**; se ha comprobado su lógica ejecutando los mismos
-  comandos en local. Las versiones de las acciones (`checkout@v4`, `setup-uv@v6`) no se han verificado en línea.
+- **La descarga real de EIA se ha probado solo a pequeña escala.** El 2026-11-17 se descargó
+  un día (2026-11-10) de una sola región (CISO): 95 filas, 0 rechazadas, y recorrieron todo el
+  pipeline hasta DuckDB. Aún no se ha probado con ventanas largas, con varias regiones a la vez
+  ni con volúmenes grandes. El tipo `TI` tuvo 23 horas en lugar de 24 (falta 2026-11-10 18:00 UTC):
+  la fuente entregó una fila menos. El test de dbt `assert_no_missing_hours` la detecta como aviso
+  (WARN), pero el pipeline de Python no la rechaza ni la corrige (ver Roadmap). Las otras 62
+  comprobaciones de dbt se ejecutaron sobre estos datos reales y pasaron, pero ninguna detectó la hora
+  faltante de `TI`; la paginación en varias páginas sigue probada solo con
+  respuestas simuladas.
+
+- **El CI se ejecutó en GitHub** (PR #3) y pasó en verde.
 - **Sin orquestación ni programación**: se ejecuta a mano. No hay aún una ventana móvil automática de
   "últimos N días" para absorber el retraso de publicación de `NG` y `TI` ni las revisiones de EIA.
 - **Duplicados:** dos filas con la misma clave se resuelven quedándose con la más reciente. Si un
@@ -237,10 +242,11 @@ La imagen corre como usuario sin privilegios, y `.dockerignore` excluye `.env` y
 - [x] Fase 2: Polars y DuckDB
 - [x] Fase 3: pruebas y calidad de datos
 - [x] Fase 4: dbt
-- [x] Fase 5: CI (configurado; pendiente de su primera ejecución en GitHub)
+- [x] Fase 5: CI (ejecutado en GitHub en el PR #3, en verde)
 - [x] Fase 6: Docker (imagen construida y probada en local)
 - [x] Fase 7: documentación
-- [ ] Primera descarga real de EIA y revisión de resultados
+- [X] Primera descarga real de EIA y revisión de resultados
+- [ ] Comprobación de completitud: detectar horas faltantes por región y tipo
 - [ ] Ventana móvil de reingesta y *freshness checks*
 - [ ] Transformación incremental
 - [ ] Orquestación (Dagster o Prefect) y observabilidad
