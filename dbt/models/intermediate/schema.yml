@@ -1,0 +1,29 @@
+version: 2
+
+models:
+  - name: int_observations_enriched
+    description: >
+      Observaciones con region y tipo resueltos y columnas de tiempo derivadas. Mantiene la
+      granularidad de staging (una fila por hora UTC x respondent x type) y NO mezcla categorias:
+      cada marts filtra por la suya.
+    columns:
+      - name: observation_id
+        data_tests: [unique, not_null]
+      - name: respondent_name
+        description: Si es nulo, la region no existe en la dimension (error de carga).
+        data_tests: [not_null]
+      - name: category
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["demand", "demand_forecast", "generation", "interchange"]
+      - name: hour_utc
+        description: Hora del dia en UTC (0-23).
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+                quote: false
+      - name: is_negative_value
+        description: Verdadero si el valor es negativo. Solo es esperable en interchange.

@@ -1,0 +1,74 @@
+version: 2
+
+models:
+  - name: mart_hourly_demand
+    description: >
+      Demanda horaria (tipo D) en megavatios-hora, por region. Una fila por hora UTC x region.
+      No incluye pronostico, generacion ni intercambio.
+    data_tests:
+      - unique_combination:
+          arguments:
+            combination_columns: [period_utc, respondent]
+    columns:
+      - name: period_utc
+        data_tests: [not_null]
+      - name: respondent
+        data_tests: [not_null]
+      - name: demand_mwh
+        description: Demanda en MWh.
+        data_tests: [not_null]
+
+  - name: mart_hourly_generation
+    description: >
+      Generacion neta horaria (tipo NG) en MWh, por region. Una fila por hora UTC x region.
+      Solo aparecen las regiones que reportan generacion.
+    data_tests:
+      - unique_combination:
+          arguments:
+            combination_columns: [period_utc, respondent]
+    columns:
+      - name: period_utc
+        data_tests: [not_null]
+      - name: respondent
+        data_tests: [not_null]
+      - name: net_generation_mwh
+        data_tests: [not_null]
+
+  - name: mart_interchange_by_region
+    description: >
+      Intercambio total (tipo TI) por region y dia UTC. Negativo = exporta, positivo = importa.
+    data_tests:
+      - unique_combination:
+          arguments:
+            combination_columns: [date_utc, respondent]
+    columns:
+      - name: date_utc
+        data_tests: [not_null]
+      - name: respondent
+        data_tests: [not_null]
+      - name: hours_reported
+        description: Horas con dato de intercambio ese dia (hasta 24).
+        data_tests: [not_null]
+      - name: net_interchange_mwh
+        description: Suma del intercambio horario; negativa si la region fue exportadora neta.
+        data_tests: [not_null]
+      - name: hours_exporting
+        description: Horas con intercambio negativo.
+      - name: hours_importing
+        description: Horas con intercambio positivo.
+
+  - name: mart_demand_vs_forecast
+    description: >
+      Vista: demanda real frente al pronostico del dia anterior, solo para las horas y regiones
+      en las que existen ambos. forecast_error_mwh > 0 = pronostico por encima de la demanda.
+    data_tests:
+      - unique_combination:
+          arguments:
+            combination_columns: [period_utc, respondent]
+    columns:
+      - name: demand_mwh
+        data_tests: [not_null]
+      - name: forecast_mwh
+        data_tests: [not_null]
+      - name: abs_pct_error
+        description: Error porcentual absoluto (fraccion, no porcentaje). Nulo si la demanda es 0.
