@@ -3,14 +3,26 @@ name = "data-pipeline-lab"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+    "duckdb>=2.0.0",
+    "httpx>=0.28.1,<0.29",
+    "polars>=2.1.0",
     "python-dotenv>=1.2.4",
 ]
 
 [dependency-groups]
+dbt = [
+    "dbt-core>=1.12.7",
+    "dbt-duckdb>=1.11.1",
+]
 dev = [
     "pytest>=9.2.0",
+    "respx>=0.23.1",
     "ruff>=0.17.5",
 ]
+
+[tool.uv]
+# `uv sync` instala tambien dbt (grupo "dbt"). Para omitirlo: `uv sync --no-group dbt`.
+default-groups = ["dev", "dbt"]
 
 [build-system]
 requires = ["uv_build>=0.13.8,<0.14.0"]
@@ -22,7 +34,8 @@ module-name = "pipeline_lab"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra --strict-markers"
+# importlib: evita choques de nombre entre tests de distintas carpetas (p. ej. dos test_client.py)
+addopts = "-ra --strict-markers --import-mode=importlib"
 markers = [
     "integration: pruebas que llaman a la API real de EIA (excluidas por defecto)",
 ]

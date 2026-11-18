@@ -1,0 +1,28 @@
+# Lo que NO debe entrar en la imagen (ni en el contexto de construccion).
+
+# Secretos: la API key se pasa en tiempo de ejecucion, nunca se hornea en la imagen.
+.env
+.env.*
+!.env.example
+
+# Datos generados y entornos locales
+data/
+.venv/
+.vscode/
+
+# Control de versiones y cachés
+.git/
+.github/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# Artefactos de dbt
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+
+# No hacen falta para ejecutar el pipeline
+tests/
+docs/

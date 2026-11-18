@@ -78,6 +78,7 @@ def load_settings(
     *,
     env: Mapping[str, str] | None = None,
     dotenv_path: Path | None = DEFAULT_DOTENV_PATH,
+    require_api_key: bool = True,
 ) -> Settings:
     """Construye `Settings` desde el entorno y, opcionalmente, un archivo .env.
 
@@ -86,9 +87,11 @@ def load_settings(
     Args:
         env: mapa de variables de entorno. Si es None se usa `os.environ`.
         dotenv_path: ruta del .env. Si es None no se lee ningun archivo.
+        require_api_key: si es False y la clave falta, se usa una clave vacia en lugar de fallar
+            (para los modos que no llaman a EIA). Una clave vacia nunca llega a enviarse.
 
     Raises:
-        ConfigError: si falta la API key o algun valor es invalido.
+        ConfigError: si falta la API key (y es obligatoria) o algun valor es invalido.
     """
     environment = os.environ if env is None else env
 
@@ -109,6 +112,8 @@ def load_settings(
         return value or None
 
     api_key = lookup(API_KEY_VAR)
+    if api_key is None and not require_api_key:
+        api_key = ""  # modos que no llaman a EIA (datos sinteticos, transformar, cargar)
     if api_key is None:
         raise ConfigError(
             f"Falta la variable {API_KEY_VAR}. Definela en el entorno o en tu archivo .env "
