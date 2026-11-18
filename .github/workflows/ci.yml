@@ -1,0 +1,59 @@
+name: CI
+
+# Se ejecuta en cada Pull Request y en cada push a main.
+# No necesita ningun secreto: todas las pruebas usan datos sinteticos o respuestas simuladas,
+# y nunca llaman a la API real de EIA.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Principio de minimo privilegio: el workflow solo puede leer el repositorio.
+permissions:
+  contents: read
+
+# Si llega un commit nuevo a la misma rama, se cancela la ejecucion anterior.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint, tests y dbt
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Descargar el codigo
+        uses: actions/checkout@v4
+
+      - name: Instalar uv (version fijada, con cache)
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.13.8"
+          enable-cache: true
+
+      - name: Instalar dependencias exactamente como en uv.lock
+        # Usa la version de Python de .python-version (3.12). `--locked` falla si uv.lock
+        # no esta al dia con pyproject.toml.
+        run: uv sync --locked
+
+      - name: Ruff (lint)
+        run: uv run ruff check
+
+      - name: Ruff (formato)
+        run: uv run ruff format --check
+
+      - name: Pruebas (pytest)
+        run: uv run pytest
+
+      - name: Pipeline completo con datos sinteticos
+        # Genera el almacen DuckDB que necesita dbt. No descarga nada de EIA.
+        run: uv run python -m pipeline_lab run --synthetic --anomalies --output-dir data
+
+      - name: dbt parse
+        working-directory: dbt
+        run: uv run dbt parse --profiles-dir .
+
+      - name: dbt build (modelos y tests)
+        working-directory: dbt
+        run: uv run dbt build --profiles-dir .
